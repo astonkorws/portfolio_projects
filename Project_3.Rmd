@@ -1,0 +1,175 @@
+---
+title: "Utilising Scholarships to Combat Student Dropout Rates"
+author: "Aston Kor"
+date: "October 2023"
+output:
+  html_document:
+    fig_caption: yes
+    number_sections: yes
+    self_contained: yes
+    theme: cerulean
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    code_folding: hide
+---
+
+# Client
+[LinkedIn](https://www.linkedin.com/in/mark-scott-73766178/)<br>
+Professor Mark Scott, Vice-Chancellor and President of The University of Sydney (USYD).
+
+# Recommendation
+
+This report aims to determine, via statistical means, a suitable method to reduce the dropout rates in USYD, utilising alteration of scholarship award choices.
+
+Studies have shown that providing scholarship awards to students have lead to improved retention rates (Reed & Hurd, 2016, p. 4), thus will reflect well on the statistics, and in turn, the overall image of the University.
+
+Following this advice, a study on the relationship between student dropout rate and those that hold a scholarship has been done. It is recommended that Professor Mark Scott fully utilise the insights by awarding more scholarships to future students to potentially lower the dropout rate in USYD.
+
+# Evidence
+
+### Research Question 
+
+<h4><i>Does the presence of scholarships have a statistically significant impact on student dropout rates?</i></h4>
+
+### Grouped Bar Chart Comparing Scholarship and Dropout Status
+
+```{r message=FALSE}
+# Load in packages
+library(tidyverse)
+library(scales)
+
+# Read in dataset
+# Rename "Type" to "Target"
+# Mutate "Scholarship.holder" values from "1" to "Yes" and "0" to "No" then "Type_Grouped" to group "Enrolled" and "Graduate" values and represent by "Did Not Dropout"
+# Remove all unnecessary columns
+filtered_data <- read.csv("students.csv") %>%
+  rename(Type = Target) %>%
+  mutate(Scholarship = ifelse(Scholarship.holder == 1, "Yes", ifelse(Scholarship.holder == 0, "No", as.character(Scholarship.holder))), Type_Grouped = ifelse(Type %in% c("Enrolled", "Graduate"), "Did Not Dropout", as.character(Type))) %>%
+  select(Scholarship, Type_Grouped)
+
+# Group "Scholarship" and "Type_Grouped" together for flexible charting and analysis in the future
+# Calculate total students across dataframe and store as column
+# Calculate percentages of students
+# Ungroup as good practice
+summed_data <- filtered_data %>%
+  group_by(Scholarship, Type_Grouped) %>%
+  summarize(Total_Students = n()) %>%
+  mutate(Percentage = scales::percent(Total_Students / sum(Total_Students), accuracy = 0.1)) %>%
+  ungroup()
+
+# Create a grouped (side-by-side) bar chart with bars coloured by "Type_Grouped" (Dropout or Did Not Dropout), labels are set for the title and axes, and the colour scale is customised alongside a minimal theme
+plot <- ggplot(summed_data, aes(x = Scholarship, y = Total_Students, fill = Type_Grouped)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Number of Students by Scholarship and Dropout Status",
+       x = "Scholarship Status",
+       y = "Students",
+       fill = "Dropout Status") +
+  scale_fill_manual(
+       values = c("Dropout" = "orange", "Did Not Dropout" = "green"),
+       breaks = c("Dropout", "Did Not Dropout"),
+       labels = c("Did", "Did Not")) +
+  theme_minimal()
+
+# Creates text labeling for percentages and numbers above each bar
+# Separate labeling for easy future modification and good practice
+labeling_plot <- plot + 
+  geom_text(aes(label = paste0(Total_Students, " (", Percentage, ")"), y = Total_Students + 5), position = position_dodge(width = 0.9), vjust = -0.5)
+
+# Display grouped bar chart
+labeling_plot
+```
+
+This bar chart illustrates the relationship between students who obtained scholarships and their respective dropout rates. The dropout rate of students without a scholarship is at a high of 38.7% and at a low of 12.2% for students with a scholarship, further implicating a strong relationship between the variables. 
+
+It is evident that students who have obtained scholarships are less likely to dropout as compared to those without, suggesting that scholarships play a positive role in encouraging students to remain in university, contributing to lower dropout rates and potentially improved educational outcomes. This also emphasises the importance of financial support in ensuring continued access to higher education. This conclusion further supports the recommendation for the client.
+
+### Contingency Table and Chi-square Test of Independence
+
+$H_0:$ Student scholarship status is independent of number of student dropouts. <br>
+$H_1:$ Student scholarship status is not independent of number of student dropouts. <br>
+
+```{r message=FALSE}
+library(knitr)
+# Create contingency table
+contingency_table <- table(filtered_data$Scholarship, filtered_data$Type_Grouped)
+
+# Create the kable table
+kable_contingency <- knitr::kable(contingency_table, "pipe", col.names=c("Dropout", "Did Not Dropout"), align=c("c"))
+
+# Display contingency kable table
+kable_contingency
+
+# Perform the Chi-square Test of Independence
+chi_square_result <- chisq.test(contingency_table)
+
+# Creating a data frame to store results
+results_table <- data.frame(
+  Test = "Chi-square Test for Independence",
+  Statistic = chi_square_result$statistic,
+  Degrees_of_Freedom = chi_square_result$parameter,
+  p_Value = format(chi_square_result$p.value, scientific = TRUE)
+)
+
+# Create kable table
+kable_chi <- kable(results_table, "pipe", col.names=c("Test Type", "Chi-square Statistic", "Degrees of Freedom", "p Value"), align=c("c"))
+
+# Display kable table for chi-square results
+kable_chi
+```
+
+This table displays a highly meaningful finding as it indicates a strong relationship between scholarship and drop out status. The chi-square statistic of 265.1037 and an exceedingly small p-value supports this.
+
+The outcome signifies that a student's scholarship status and their likelihood of dropping out are not independent of each other and are interrelated. The minuscule p-value suggests the data is highly unlikely to be of random chance, strengthening evidence of this connection, further supporting the recommendation.
+
+### Initial Data Analysis
+
+This dataset was collected from aggregation of information related to students from a Portugal University enrolled in 17 undergraduate degrees between academic years 2008/2009 and 2018/2019. The dataset is used as a comma-separated values (CSV) file, and consists of 4424 records with 35 attributes.
+
+This dataset is valid as though the data is adapted from Portugal, it presents relevant insights to the client, as it is adapted from another higher education institution and meaningful conclusions can be derived. A study from Macquaire University, <b>a University in Sydney</b>, also supports the findings as a total of 525 students who received scholarships have upheld strong retention rates (Reed & Hurd, 2016, p. 4), further supporting the dataset's viability to the client.
+
+Key potential limitations of the dataset to take note of: <br>
+- As this data is a result of aggregation of information from disjointed data sources (Realinho et al., 2022), there may be aggregation bias due to inconsistencies during the combining process. <br>
+- As the data was retrieved from a sample of undergraduate degrees, the conclusions derived must be conservative as not all degrees are considered.
+
+# Appendix
+
+### Client Choice
+The client can relate to the research question. USYD's vision of inclusion is linked to how scholarships can improve student achievement. Maintaining high student retention and success rates impacts reputation and long-term success.
+
+### Statistical Analysis
+
+The grouped bar plot was chosen for straightforward comparison using side-by-side bars, allowing for quick spotting and interpretting of patterns via sensible elements. Adding a gender variable to a stacked bar plot was considered but deemed irrelevant and cluttered.
+
+The chi-square test was selected for its clear interpretation and presentation, making it accessible to non-statisticians. It aids data-driven decisions through the p-value by adjusting strategies. It was the most precise choice given the data's nature compared to other hypothesis tests. <br><br>
+
+<h4><b>H</b><br></h4>
+$H_0:$ Student scholarship status is independent of number of student dropouts. <br>
+$H_1:$ Student scholarship status is not independent of number of student dropouts. <br><br>
+
+<h4><b>A</b><br></h4>
+None of the expected categories are empty. <br>
+No more than 20% are <5. <br><br>
+
+<h4><b>T</b></h4>
+$\chi^2 = \sum(\frac{(OF-EF)^2}{EF}) = 265.1037$ <br><br>
+
+<h4><b>P</b><br></h4>
+$\chi^2_{(2-1)(2-1)} = \chi^2_1$ <br><br>
+$p = 1.324567e-59$ <br><br>
+
+<h4><b>C</b><br></h4>
+Reject null. As p < 0.05, strong evidence shows a relationship between scholarship status and number of student dropouts.
+
+### Limitations
+Data was collected from students who took the normal duration of the course. Outliers would be disregarded, potentially leading to biased results and reduced robustness.
+
+# Acknowledgments (APA 7th Style)
+
+Pruim, R. (2016, October 19). <i>Mathematics in R Markdown</i>. https://rpruim.github.io/s341/S19/from-class/MathinRmd.html
+
+Reed, R. J. & Hurd, B. (2014). A value beyond money? Assessing the impact of equity scholarships: from access to success. <i>Studies in Higher Education, 41</i>(7), 1236-1250. https://doi.org/10.1080/03075079.2014.968541
+
+The University of Sydney. (2023). <i>Vision and values</i>. https://www.sydney.edu.au/about-us/vision-and-values.html
+
+Xie, Y., Dervieux, C. & Riederer, E. (2023, August 22). <i>R Markdown Cookbook</i>. https://bookdown.org/yihui/rmarkdown-cookbook/
